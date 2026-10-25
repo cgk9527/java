@@ -1,0 +1,97 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: ecommerce-backend
+
+  # PostgreSQL 数据源(高并发下推荐连接池调优)
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://localhost:5432/ecommerce?useSSL=false&stringtype=unspecified
+    username: postgres
+    password: postgres
+    hikari:
+      maximum-pool-size: 50
+      minimum-idle: 10
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+  # Redis(缓存 + 库存扣减 + 购物车)
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      database: 0
+      password:
+      timeout: 3000ms
+      lettuce:
+        pool:
+          max-active: 32
+          max-idle: 16
+          min-idle: 4
+          max-wait: 3000ms
+
+  # RabbitMQ(异步扣减库存、同步 ES)
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    listener:
+      simple:
+        concurrency: 4
+        max-concurrency: 16
+        acknowledge-mode: auto
+        prefetch: 20
+
+  # Elasticsearch(商品快速搜索)
+  elasticsearch:
+    uris: http://localhost:9200
+    connection-timeout: 3s
+    socket-timeout: 5s
+
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+
+# MyBatis-Plus
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    db-config:
+      id-type: auto
+
+# 自定义配置
+jwt:
+  # 生产环境请务必替换为随机生成的密钥(长度 >= 32 字节)
+  secret: "ecommerce-platform-jwt-secret-key-please-change-in-production-2026"
+  expire-hours: 24
+  header: Authorization
+  prefix: "Bearer "
+
+mq:
+  queues:
+    order-stock: ecommerce.order.stock.queue
+    product-sync: ecommerce.product.sync.queue
+  exchanges:
+    order-stock: ecommerce.order.stock.exchange
+    product-sync: ecommerce.product.sync.exchange
+  routing-keys:
+    order-stock: ecommerce.order.stock
+    product-sync: ecommerce.product.sync
+
+# 业务配置
+ecommerce:
+  stock-key-prefix: "stock:sku:"
+  cart-key-prefix: "cart:user:"
+  product-cache-key: "product:detail:"
+  es-product-index: "product"
+
+logging:
+  level:
+    com.ecommerce: info
