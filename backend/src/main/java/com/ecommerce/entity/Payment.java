@@ -26,6 +26,12 @@ public class Payment {
 
     private Integer payType;
 
+    /** 支付渠道: mock / alipay */
+    private String channel;
+
+    /** 第三方交易流水号(如支付宝 trade_no) */
+    private String tradeNo;
+
     private BigDecimal amount;
 
     private Integer status;

@@ -27,3 +27,14 @@ export const getOrders = () => request.get('/orders');
 export const getOrderDetail = (id) => request.get(`/orders/${id}`);
 export const payOrder = (id) => request.post(`/orders/${id}/pay`);
 export const cancelOrder = (id) => request.post(`/orders/${id}/cancel`);
+
+// 后台管理(管理员)
+export const getAdminProducts = () => request.get('/admin/products');
+export const createAdminProduct = (data) => request.post('/admin/products', data);
+export const updateAdminProduct = (id, data) => request.put(`/admin/products/${id}`, data);
+export const deleteAdminProduct = (id) => request.delete(`/admin/products/${id}`);
+export const updateAdminProductStatus = (id, status) => request.put(`/admin/products/${id}/status`, null, { params: { status } });
+export const getAdminSkus = (productId) => request.get(`/admin/products/${productId}/skus`);
+export const addAdminSku = (productId, data) => request.post(`/admin/products/${productId}/skus`, data);
+export const updateAdminSku = (skuId, data) => request.put(`/admin/skus/${skuId}`, data);
+export const deleteAdminSku = (skuId) => request.delete(`/admin/skus/${skuId}`);

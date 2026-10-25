@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS users (
     email       VARCHAR(128),
     avatar      VARCHAR(255),
     status      SMALLINT     NOT NULL DEFAULT 1, -- 1-正常 0-禁用
+    role        SMALLINT     NOT NULL DEFAULT 0, -- 0-普通用户 1-管理员
     created_at  TIMESTAMP    NOT NULL DEFAULT now(),
     updated_at  TIMESTAMP    NOT NULL DEFAULT now()
 );
@@ -132,6 +133,8 @@ CREATE TABLE IF NOT EXISTS payment (
     order_no    VARCHAR(64)   NOT NULL,
     user_id     BIGINT        NOT NULL,
     pay_type    SMALLINT      NOT NULL DEFAULT 1, -- 1-余额 2-支付宝 3-微信(演示)
+    channel     VARCHAR(20),                     -- 支付渠道: mock / alipay
+    trade_no    VARCHAR(64),                     -- 第三方交易流水号
     amount      NUMERIC(12,2) NOT NULL,
     status      SMALLINT      NOT NULL DEFAULT 0, -- 0-待支付 1-成功 2-失败
     pay_time    TIMESTAMP,
@@ -167,3 +170,10 @@ INSERT INTO sku (product_id, sku_code, specs, price, stock, sales, status) VALUE
 (3, 'AC-001-WHITE', '皓月白 / 1.5匹', 2599.00, 200, 500, 1),
 (4, 'SHOE-001-40', '黑白 / 40码', 399.00, 1000, 3000, 1)
 ON CONFLICT DO NOTHING;
+
+-- =====================================================================
+-- 已有库升级(幂等, 可重复执行)
+-- =====================================================================
+ALTER TABLE users ADD COLUMN IF NOT EXISTS role SMALLINT NOT NULL DEFAULT 0;
+ALTER TABLE payment ADD COLUMN IF NOT EXISTS channel VARCHAR(20);
+ALTER TABLE payment ADD COLUMN IF NOT EXISTS trade_no VARCHAR(64);

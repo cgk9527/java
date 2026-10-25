@@ -38,6 +38,7 @@ public class UserService {
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setNickname(request.getNickname() == null ? request.getUsername() : request.getNickname());
         user.setStatus(1);
+        user.setRole(0);
         LocalDateTime now = LocalDateTime.now();
         user.setCreatedAt(now);
         user.setUpdatedAt(now);
@@ -66,6 +67,16 @@ public class UserService {
         return toVO(user);
     }
 
+    /**
+     * 校验当前用户是否为管理员
+     */
+    public void requireAdmin(Long userId) {
+        User user = userMapper.selectById(userId);
+        if (user == null || user.getRole() == null || user.getRole() != 1) {
+            throw new BizException(ResultCode.FORBIDDEN);
+        }
+    }
+
     public UserVO toVO(User user) {
         UserVO vo = new UserVO();
         vo.setId(user.getId());
@@ -74,6 +85,7 @@ public class UserService {
         vo.setPhone(user.getPhone());
         vo.setEmail(user.getEmail());
         vo.setAvatar(user.getAvatar());
+        vo.setRole(user.getRole());
         return vo;
     }
 }

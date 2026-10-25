@@ -38,12 +38,6 @@ public class OrderController {
         return Result.success(orderService.detail(UserContext.getUserId(), id));
     }
 
-    @PostMapping("/{id}/pay")
-    public Result<Void> pay(@PathVariable Long id) {
-        orderService.pay(UserContext.getUserId(), id);
-        return Result.success();
-    }
-
     @PostMapping("/{id}/cancel")
     public Result<Void> cancel(@PathVariable Long id) {
         orderService.cancel(UserContext.getUserId(), id);

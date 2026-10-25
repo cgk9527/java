@@ -91,6 +91,23 @@ ecommerce:
   cart-key-prefix: "cart:user:"
   product-cache-key: "product:detail:"
   es-product-index: "product"
+  order:
+    # 订单超时未支付自动关闭时长(毫秒), 30 分钟
+    timeout-ms: 1800000
+  payment:
+    # 支付渠道: mock(本地演示, 直接置为已支付) / alipay(支付宝电脑网站支付)
+    provider: mock
+    alipay:
+      gateway: "https://openapi.alipay.com/gateway.do"
+      app-id: ""
+      # 应用私钥(PKCS8 格式, 即 -----BEGIN PRIVATE KEY-----)
+      private-key: ""
+      # 支付宝公钥(-----BEGIN PUBLIC KEY-----)
+      alipay-public-key: ""
+      notify-url: "http://localhost:8080/api/pay/notify/alipay"
+      return-url: "http://localhost:3000/orders"
+      sign-type: "RSA2"
+      charset: "utf-8"
 
 logging:
   level:

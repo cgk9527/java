@@ -26,9 +26,21 @@ export default function Orders() {
   }, []);
 
   const onPay = async (id) => {
-    await payOrder(id);
-    message.success('支付成功');
-    load();
+    const win = window.open('about:blank');
+    const res = await payOrder(id);
+    if (res && res.channel === 'alipay' && res.body) {
+      if (win) {
+        win.document.write(res.body);
+        win.document.close();
+        message.info('已打开支付宝支付页面，支付完成后刷新本页查看状态');
+      } else {
+        message.warning('请允许浏览器弹出窗口以完成支付');
+      }
+    } else {
+      if (win) win.close();
+      message.success('支付成功');
+      load();
+    }
   };
 
   const onCancel = async (id) => {
