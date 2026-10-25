@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Card, List, Tag, Button, Empty, Space, Spin, Modal, Radio, message } from 'antd';
+import { useSearchParams } from 'react-router-dom';
 import { QRCodeCanvas } from 'qrcode.react';
-import { getOrders, getOrderPayStatus, payOrder, cancelOrder } from '../api/index.js';
+import { getOrders, getOrderPayStatus, getOrderPayStatusByNo, payOrder, cancelOrder } from '../api/index.js';
 
 const STATUS_MAP = {
   0: { text: '待支付', color: 'orange' },
@@ -17,6 +18,9 @@ const PAY_CHANNELS = [
   { value: 'wechat', label: '微信扫码支付' }
 ];
 
+const POLL_INTERVAL = 2000;
+const POLL_TIMEOUT_SECONDS = 60;
+
 export default function Orders() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -27,6 +31,10 @@ export default function Orders() {
   const [payResult, setPayResult] = useState(null);
   const [paying, setPaying] = useState(false);
   const [pollingOrderId, setPollingOrderId] = useState(null);
+  const [countdown, setCountdown] = useState(0);
+  const countdownRef = useRef(POLL_TIMEOUT_SECONDS);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const returnOrderNo = searchParams.get('out_trade_no');
 
   const load = () => {
     setLoading(true);
@@ -40,10 +48,23 @@ export default function Orders() {
     load();
   }, []);
 
-  // 支付结果主动轮询: 每 2 秒查一次订单状态, 状态变化后自动刷新
+  // 支付结果主动轮询: 每 2 秒查一次订单状态, 状态变化后自动刷新; 超时后停止
   useEffect(() => {
     if (!pollingOrderId) return;
+    countdownRef.current = POLL_TIMEOUT_SECONDS;
+    setCountdown(POLL_TIMEOUT_SECONDS);
     const timer = setInterval(async () => {
+      countdownRef.current -= 2;
+      setCountdown(Math.max(countdownRef.current, 0));
+      if (countdownRef.current <= 0) {
+        clearInterval(timer);
+        setPollingOrderId(null);
+        setPayResult(null);
+        setPayModalOpen(false);
+        message.warning('支付确认超时，请在订单列表中查看支付结果');
+        load();
+        return;
+      }
       try {
         const status = await getOrderPayStatus(pollingOrderId);
         if (status !== 0) {
@@ -51,6 +72,7 @@ export default function Orders() {
           setPollingOrderId(null);
           setPayResult(null);
           setPayModalOpen(false);
+          setCountdown(0);
           if (status === 1) {
             message.success('支付成功');
           } else {
@@ -61,9 +83,32 @@ export default function Orders() {
       } catch (e) {
         // 忽略单次轮询失败, 下个周期继续
       }
-    }, 2000);
+    }, POLL_INTERVAL);
     return () => clearInterval(timer);
   }, [pollingOrderId]);
+
+  // 支付宝 return_url 带回 out_trade_no 时, 按订单号轮询并自动刷新
+  useEffect(() => {
+    if (!returnOrderNo) return;
+    const timer = setInterval(async () => {
+      try {
+        const status = await getOrderPayStatusByNo(returnOrderNo);
+        if (status !== 0) {
+          clearInterval(timer);
+          setSearchParams({}, { replace: true });
+          if (status === 1) {
+            message.success('支付成功');
+          } else {
+            message.warning('订单已关闭');
+          }
+          load();
+        }
+      } catch (e) {
+        // 忽略单次轮询失败
+      }
+    }, POLL_INTERVAL);
+    return () => clearInterval(timer);
+  }, [returnOrderNo]);
 
   const openPay = (order) => {
     setPayOrderId(order.id);
@@ -166,6 +211,7 @@ export default function Orders() {
             <p>{payResult.channel === 'wechat' ? '请使用微信扫一扫支付' : '请使用支付宝扫一扫支付'}</p>
             <QRCodeCanvas value={payResult.qrCode} size={220} includeMargin />
             <p style={{ color: '#999', marginTop: 8 }}>订单号：{payResult.orderNo}</p>
+            <p style={{ color: '#999' }}>正在确认支付结果…（{countdown}s）</p>
             <Button
               type="primary"
               onClick={() => { setPollingOrderId(null); setPayModalOpen(false); load(); }}

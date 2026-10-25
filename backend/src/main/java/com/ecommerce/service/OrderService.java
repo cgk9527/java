@@ -161,6 +161,19 @@ public class OrderService {
         return getOwnOrder(userId, orderId).getStatus();
     }
 
+    /**
+     * 按订单号查询状态(供支付宝 return_url 回调后轮询)
+     */
+    public Integer getStatusByOrderNo(Long userId, String orderNo) {
+        Order order = orderMapper.selectOne(Wrappers.<Order>lambdaQuery()
+                .eq(Order::getOrderNo, orderNo)
+                .eq(Order::getUserId, userId));
+        if (order == null) {
+            throw new BizException(ResultCode.ORDER_NOT_FOUND);
+        }
+        return order.getStatus();
+    }
+
     @Transactional(rollbackFor = Exception.class)
     public void cancel(Long userId, Long orderId) {
         Order order = getOwnOrder(userId, orderId);
