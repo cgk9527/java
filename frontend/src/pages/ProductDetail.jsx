@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Card, Row, Col, Radio, Button, InputNumber, Spin, message, Space } from 'antd';
+import { Card, Row, Col, Radio, Button, InputNumber, Input, Rate, List, Avatar, Modal, Empty, Spin, message, Space } from 'antd';
 import { ShoppingCartOutlined, ThunderboltOutlined } from '@ant-design/icons';
-import { getProductDetail, addToCart } from '../api/index.js';
+import { getProductDetail, addToCart, getReviews, createReview } from '../api/index.js';
 import { useAuth } from '../context/AuthContext.jsx';
 
 export default function ProductDetail() {
@@ -13,6 +13,21 @@ export default function ProductDetail() {
   const [loading, setLoading] = useState(true);
   const [skuId, setSkuId] = useState(null);
   const [quantity, setQuantity] = useState(1);
+  const [reviews, setReviews] = useState([]);
+  const [reviewTotal, setReviewTotal] = useState(0);
+  const [reviewModal, setReviewModal] = useState(false);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewContent, setReviewContent] = useState('');
+  const [submittingReview, setSubmittingReview] = useState(false);
+
+  const loadReviews = () => {
+    getReviews(id, 1, 10)
+      .then((res) => {
+        setReviews(res.records || []);
+        setReviewTotal(res.total || 0);
+      })
+      .catch(() => {});
+  };
 
   useEffect(() => {
     setLoading(true);
@@ -25,6 +40,7 @@ export default function ProductDetail() {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
+    loadReviews();
   }, [id]);
 
   const currentSku = product?.skus?.find((s) => s.id === skuId);
@@ -43,6 +59,31 @@ export default function ProductDetail() {
     message.success('已加入购物车');
     if (goCart) {
       navigate('/cart');
+    }
+  };
+
+  const openReview = () => {
+    if (!user) {
+      message.warning('请先登录');
+      navigate('/login');
+      return;
+    }
+    setReviewRating(5);
+    setReviewContent('');
+    setReviewModal(true);
+  };
+
+  const submitReview = async () => {
+    setSubmittingReview(true);
+    try {
+      await createReview({ productId: Number(id), rating: reviewRating, content: reviewContent });
+      message.success('评价成功');
+      setReviewModal(false);
+      loadReviews();
+    } catch (e) {
+      // 拦截器已提示
+    } finally {
+      setSubmittingReview(false);
     }
   };
 
@@ -114,6 +155,49 @@ export default function ProductDetail() {
           <div style={{ whiteSpace: 'pre-wrap' }}>{product.detail}</div>
         </Card>
       )}
+
+      <Card
+        title={`商品评价（${reviewTotal}）`}
+        style={{ marginTop: 16 }}
+        extra={<Button type="primary" size="small" onClick={openReview}>写评价</Button>}
+      >
+        {reviews.length === 0 ? (
+          <Empty description="暂无评价" />
+        ) : (
+          <List
+            dataSource={reviews}
+            renderItem={(r) => (
+              <List.Item>
+                <List.Item.Meta
+                  avatar={<Avatar>{r.nickname ? r.nickname[0] : '用'}</Avatar>}
+                  title={<Rate disabled value={r.rating} />}
+                  description={r.content || '-'}
+                />
+              </List.Item>
+            )}
+          />
+        )}
+      </Card>
+
+      <Modal
+        title="写评价"
+        open={reviewModal}
+        onOk={submitReview}
+        onCancel={() => setReviewModal(false)}
+        confirmLoading={submittingReview}
+        okText="提交评价"
+      >
+        <div style={{ marginBottom: 12 }}>
+          <span style={{ marginRight: 12 }}>评分</span>
+          <Rate value={reviewRating} onChange={setReviewRating} />
+        </div>
+        <Input.TextArea
+          rows={4}
+          placeholder="分享你的使用体验（选填）"
+          value={reviewContent}
+          onChange={(e) => setReviewContent(e.target.value)}
+        />
+      </Modal>
     </div>
   );
 }

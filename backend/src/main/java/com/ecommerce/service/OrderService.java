@@ -174,6 +174,51 @@ public class OrderService {
         return order.getStatus();
     }
 
+    /**
+     * 商家发货(后台)
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void ship(Long orderId, String trackingNo) {
+        Order order = orderMapper.selectById(orderId);
+        if (order == null) {
+            throw new BizException(ResultCode.ORDER_NOT_FOUND);
+        }
+        if (order.getStatus() != Order.STATUS_PAID) {
+            throw new BizException(ResultCode.ORDER_STATUS_ERROR);
+        }
+        LocalDateTime now = LocalDateTime.now();
+        order.setStatus(Order.STATUS_SHIPPED);
+        order.setTrackingNo(trackingNo);
+        order.setShippedAt(now);
+        order.setUpdatedAt(now);
+        orderMapper.updateById(order);
+    }
+
+    /**
+     * 用户确认收货
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void confirmReceive(Long userId, Long orderId) {
+        Order order = getOwnOrder(userId, orderId);
+        if (order.getStatus() != Order.STATUS_SHIPPED) {
+            throw new BizException(ResultCode.ORDER_STATUS_ERROR);
+        }
+        LocalDateTime now = LocalDateTime.now();
+        order.setStatus(Order.STATUS_COMPLETED);
+        order.setCompletedAt(now);
+        order.setUpdatedAt(now);
+        orderMapper.updateById(order);
+    }
+
+    /**
+     * 查询全部订单(后台)
+     */
+    public List<OrderVO> listAll() {
+        List<Order> orders = orderMapper.selectList(
+                Wrappers.<Order>lambdaQuery().orderByDesc(Order::getId));
+        return orders.stream().map(order -> toVO(order, findItems(order.getId()))).toList();
+    }
+
     @Transactional(rollbackFor = Exception.class)
     public void cancel(Long userId, Long orderId) {
         Order order = getOwnOrder(userId, orderId);
@@ -261,9 +306,12 @@ public class OrderService {
         vo.setReceiverName(order.getReceiverName());
         vo.setReceiverPhone(order.getReceiverPhone());
         vo.setReceiverAddress(order.getReceiverAddress());
+        vo.setTrackingNo(order.getTrackingNo());
         vo.setRemark(order.getRemark());
         vo.setCreatedAt(order.getCreatedAt());
         vo.setPaidAt(order.getPaidAt());
+        vo.setShippedAt(order.getShippedAt());
+        vo.setCompletedAt(order.getCompletedAt());
         vo.setItems(items.stream().map(item -> {
             OrderItemVO iv = new OrderItemVO();
             iv.setProductId(item.getProductId());

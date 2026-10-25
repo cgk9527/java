@@ -53,4 +53,10 @@ public class OrderController {
         orderService.cancel(UserContext.getUserId(), id);
         return Result.success();
     }
+
+    @PostMapping("/{id}/confirm")
+    public Result<Void> confirm(@PathVariable Long id) {
+        orderService.confirmReceive(UserContext.getUserId(), id);
+        return Result.success();
+    }
 }

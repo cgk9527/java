@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import {
   Card, List, Row, Col, Checkbox, InputNumber, Button, Empty,
-  Modal, Form, Input, message, Popconfirm, Spin
+  Modal, Form, Input, Select, message, Popconfirm, Spin
 } from 'antd';
 import { DeleteOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { getCart, updateCart, deleteCartItem, createOrder, clearCart } from '../api/index.js';
+import { getCart, updateCart, deleteCartItem, createOrder, clearCart, getAddresses } from '../api/index.js';
 
 export default function Cart() {
   const navigate = useNavigate();
@@ -14,6 +14,7 @@ export default function Cart() {
   const [selected, setSelected] = useState([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [addresses, setAddresses] = useState([]);
   const [form] = Form.useForm();
 
   const load = () => {
@@ -29,7 +30,19 @@ export default function Cart() {
 
   useEffect(() => {
     load();
+    getAddresses().then(setAddresses).catch(() => {});
   }, []);
+
+  const onSelectAddress = (id) => {
+    const addr = addresses.find((a) => a.id === id);
+    if (!addr) return;
+    const full = [addr.province, addr.city, addr.district, addr.detail].filter(Boolean).join(' ');
+    form.setFieldsValue({
+      receiverName: addr.receiverName,
+      receiverPhone: addr.receiverPhone,
+      receiverAddress: full
+    });
+  };
 
   const onChangeQty = async (skuId, qty) => {
     if (qty <= 0) return;
@@ -147,6 +160,18 @@ export default function Cart() {
         okText="提交订单"
       >
         <Form form={form} layout="vertical" initialValues={{ receiverName: '', receiverPhone: '', receiverAddress: '', remark: '' }}>
+          {addresses.length > 0 && (
+            <Form.Item label="选择地址">
+              <Select
+                placeholder="从地址簿选择"
+                onChange={onSelectAddress}
+                options={addresses.map((a) => ({
+                  value: a.id,
+                  label: `${a.receiverName} ${a.receiverPhone} ${[a.province, a.city, a.district, a.detail].filter(Boolean).join(' ')}`
+                }))}
+              />
+            </Form.Item>
+          )}
           <Form.Item name="receiverName" label="收货人" rules={[{ required: true, message: '请输入收货人' }]}>
             <Input placeholder="收货人姓名" />
           </Form.Item>

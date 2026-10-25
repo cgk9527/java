@@ -34,6 +34,24 @@ export const cancelOrder = (id) => request.post(`/orders/${id}/cancel`);
 export const getPayments = () => request.get('/payments');
 export const refundOrder = (id, reason) => request.post(`/orders/${id}/refund`, null, { params: { reason } });
 
+// 收货地址
+export const getAddresses = () => request.get('/addresses');
+export const createAddress = (data) => request.post('/addresses', data);
+export const updateAddress = (id, data) => request.put(`/addresses/${id}`, data);
+export const deleteAddress = (id) => request.delete(`/addresses/${id}`);
+export const setDefaultAddress = (id) => request.post(`/addresses/${id}/default`);
+
+// 订单确认收货
+export const confirmOrder = (id) => request.post(`/orders/${id}/confirm`);
+
+// 商品评价
+export const getReviews = (productId, page = 1, size = 10) => request.get(`/products/${productId}/reviews`, { params: { page, size } });
+export const createReview = (data) => request.post('/reviews', data);
+
+// 后台订单(发货)
+export const getAdminOrders = () => request.get('/admin/orders');
+export const shipOrder = (id, trackingNo) => request.post(`/admin/orders/${id}/ship`, null, { params: { trackingNo } });
+
 // 后台管理(管理员)
 export const getAdminProducts = () => request.get('/admin/products');
 export const createAdminProduct = (data) => request.post('/admin/products', data);

@@ -25,6 +25,10 @@ public class Order {
     public static final int STATUS_CLOSED = 3;
     /** 已退款 */
     public static final int STATUS_REFUNDED = 4;
+    /** 已发货 */
+    public static final int STATUS_SHIPPED = 5;
+    /** 已完成 */
+    public static final int STATUS_COMPLETED = 6;
 
     @TableId(type = IdType.AUTO)
     private Long id;
@@ -45,11 +49,17 @@ public class Order {
 
     private String receiverAddress;
 
+    private String trackingNo;
+
     private String remark;
 
     private LocalDateTime createdAt;
 
     private LocalDateTime paidAt;
+
+    private LocalDateTime shippedAt;
+
+    private LocalDateTime completedAt;
 
     private LocalDateTime updatedAt;
 }

@@ -92,13 +92,16 @@ CREATE TABLE IF NOT EXISTS orders (
     user_id          BIGINT        NOT NULL,
     total_amount     NUMERIC(12,2) NOT NULL,
     pay_amount       NUMERIC(12,2) NOT NULL,
-    status           SMALLINT      NOT NULL DEFAULT 0, -- 0-待支付 1-已支付 2-已取消 3-已关闭
+    status           SMALLINT      NOT NULL DEFAULT 0, -- 0-待支付 1-已支付 2-已取消 3-已关闭 4-已退款 5-已发货 6-已完成
     receiver_name    VARCHAR(64),
     receiver_phone   VARCHAR(20),
     receiver_address VARCHAR(255),
+    tracking_no      VARCHAR(64),                    -- 物流单号
     remark           VARCHAR(255),
     created_at       TIMESTAMP     NOT NULL DEFAULT now(),
     paid_at          TIMESTAMP,
+    shipped_at       TIMESTAMP,
+    completed_at     TIMESTAMP,
     updated_at       TIMESTAMP     NOT NULL DEFAULT now()
 );
 COMMENT ON TABLE orders IS '订单表';
@@ -163,6 +166,41 @@ COMMENT ON TABLE refund IS '退款表';
 CREATE UNIQUE INDEX uq_refund_refund_no ON refund (refund_no);
 CREATE INDEX idx_refund_order ON refund (order_id);
 
+-- ---------------------------------------------------------------------
+-- 收货地址表
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS user_address (
+    id             BIGSERIAL PRIMARY KEY,
+    user_id        BIGINT       NOT NULL,
+    receiver_name  VARCHAR(64)  NOT NULL,
+    receiver_phone VARCHAR(20)  NOT NULL,
+    province       VARCHAR(64),
+    city           VARCHAR(64),
+    district       VARCHAR(64),
+    detail         VARCHAR(255) NOT NULL,
+    is_default     SMALLINT     NOT NULL DEFAULT 0, -- 1-默认地址
+    created_at     TIMESTAMP    NOT NULL DEFAULT now(),
+    updated_at     TIMESTAMP    NOT NULL DEFAULT now()
+);
+COMMENT ON TABLE user_address IS '收货地址表';
+CREATE INDEX idx_user_address_user ON user_address (user_id);
+
+-- ---------------------------------------------------------------------
+-- 商品评价表
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS review (
+    id          BIGSERIAL PRIMARY KEY,
+    product_id  BIGINT      NOT NULL,
+    user_id     BIGINT      NOT NULL,
+    order_id    BIGINT,
+    rating      SMALLINT    NOT NULL,                -- 1-5 星
+    content     VARCHAR(500),
+    status      SMALLINT    NOT NULL DEFAULT 1,      -- 1-显示 0-隐藏
+    created_at  TIMESTAMP   NOT NULL DEFAULT now()
+);
+COMMENT ON TABLE review IS '商品评价表';
+CREATE INDEX idx_review_product ON review (product_id);
+
 -- =====================================================================
 -- 种子数据(演示)
 -- =====================================================================
@@ -197,3 +235,6 @@ ON CONFLICT DO NOTHING;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS role SMALLINT NOT NULL DEFAULT 0;
 ALTER TABLE payment ADD COLUMN IF NOT EXISTS channel VARCHAR(20);
 ALTER TABLE payment ADD COLUMN IF NOT EXISTS trade_no VARCHAR(64);
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS tracking_no VARCHAR(64);
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS shipped_at TIMESTAMP;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS completed_at TIMESTAMP;

@@ -2,14 +2,16 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Card, List, Tag, Button, Empty, Space, Spin, Modal, Radio, Input, message } from 'antd';
 import { useSearchParams } from 'react-router-dom';
 import { QRCodeCanvas } from 'qrcode.react';
-import { getOrders, getOrderPayStatus, getOrderPayStatusByNo, payOrder, cancelOrder, refundOrder } from '../api/index.js';
+import { getOrders, getOrderPayStatus, getOrderPayStatusByNo, payOrder, cancelOrder, refundOrder, confirmOrder } from '../api/index.js';
 
 const STATUS_MAP = {
   0: { text: '待支付', color: 'orange' },
   1: { text: '已支付', color: 'green' },
   2: { text: '已取消', color: 'default' },
   3: { text: '已关闭', color: 'default' },
-  4: { text: '已退款', color: 'blue' }
+  4: { text: '已退款', color: 'blue' },
+  5: { text: '已发货', color: 'geekblue' },
+  6: { text: '已完成', color: 'green' }
 };
 
 const PAY_CHANNELS = [
@@ -160,6 +162,12 @@ export default function Orders() {
     load();
   };
 
+  const onConfirmReceive = async (id) => {
+    await confirmOrder(id);
+    message.success('已确认收货');
+    load();
+  };
+
   const openRefund = (order) => {
     setRefundOrderId(order.id);
     setRefundReason('');
@@ -198,6 +206,9 @@ export default function Orders() {
                         <span style={{ color: '#666' }}>订单号：{order.orderNo}</span>
                         <span style={{ color: '#666' }}>{order.createdAt}</span>
                       </div>
+                      {order.trackingNo && (
+                        <div style={{ marginBottom: 8, color: '#666' }}>物流单号：{order.trackingNo}</div>
+                      )}
                       {order.items.map((item) => (
                         <div key={item.skuId} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '8px 0' }}>
                           <img src={item.productImage} alt={item.productName} style={{ width: 50, height: 50, objectFit: 'cover' }} />
@@ -218,6 +229,9 @@ export default function Orders() {
                         )}
                         {order.status === 1 && (
                           <Button type="primary" danger onClick={() => openRefund(order)}>申请退款</Button>
+                        )}
+                        {order.status === 5 && (
+                          <Button type="primary" onClick={() => onConfirmReceive(order.id)}>确认收货</Button>
                         )}
                       </div>
                     </div>
