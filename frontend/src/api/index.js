@@ -25,7 +25,7 @@ export const clearCart = () => request.delete('/cart');
 export const createOrder = (data) => request.post('/orders', data);
 export const getOrders = () => request.get('/orders');
 export const getOrderDetail = (id) => request.get(`/orders/${id}`);
-export const payOrder = (id) => request.post(`/orders/${id}/pay`);
+export const payOrder = (id, channel = 'mock') => request.post(`/orders/${id}/pay`, null, { params: { channel } });
 export const cancelOrder = (id) => request.post(`/orders/${id}/cancel`);
 
 // 后台管理(管理员)

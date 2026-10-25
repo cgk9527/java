@@ -21,8 +21,11 @@ public class PaymentResultVO {
 
     private String orderNo;
 
-    /** 支付宝返回的支付表单 HTML(仅 alipay 渠道) */
+    /** 支付宝返回的支付表单 HTML(仅电脑网站支付) */
     private String body;
+
+    /** 二维码内容(扫码支付, 如 alipay 收款二维码/微信 code_url) */
+    private String qrCode;
 
     /** 订单当前状态 */
     private Integer status;
