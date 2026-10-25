@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Card, List, Tag, Button, Empty, Space, Spin, Modal, Radio, message } from 'antd';
 import { QRCodeCanvas } from 'qrcode.react';
-import { getOrders, payOrder, cancelOrder } from '../api/index.js';
+import { getOrders, getOrderPayStatus, payOrder, cancelOrder } from '../api/index.js';
 
 const STATUS_MAP = {
   0: { text: '待支付', color: 'orange' },
@@ -26,6 +26,7 @@ export default function Orders() {
   const [payChannel, setPayChannel] = useState('alipay');
   const [payResult, setPayResult] = useState(null);
   const [paying, setPaying] = useState(false);
+  const [pollingOrderId, setPollingOrderId] = useState(null);
 
   const load = () => {
     setLoading(true);
@@ -38,6 +39,31 @@ export default function Orders() {
   useEffect(() => {
     load();
   }, []);
+
+  // 支付结果主动轮询: 每 2 秒查一次订单状态, 状态变化后自动刷新
+  useEffect(() => {
+    if (!pollingOrderId) return;
+    const timer = setInterval(async () => {
+      try {
+        const status = await getOrderPayStatus(pollingOrderId);
+        if (status !== 0) {
+          clearInterval(timer);
+          setPollingOrderId(null);
+          setPayResult(null);
+          setPayModalOpen(false);
+          if (status === 1) {
+            message.success('支付成功');
+          } else {
+            message.warning('订单已关闭');
+          }
+          load();
+        }
+      } catch (e) {
+        // 忽略单次轮询失败, 下个周期继续
+      }
+    }, 2000);
+    return () => clearInterval(timer);
+  }, [pollingOrderId]);
 
   const openPay = (order) => {
     setPayOrderId(order.id);
@@ -59,13 +85,18 @@ export default function Orders() {
         if (win) {
           win.document.write(res.body);
           win.document.close();
-          message.info('已打开支付宝支付页面，支付完成后刷新本页查看状态');
+          message.info('已打开支付宝支付页面，支付完成后本页会自动刷新');
         } else {
           message.warning('请允许浏览器弹出窗口以完成支付');
         }
         setPayModalOpen(false);
+        setPollingOrderId(payOrderId);
       } else if (res.qrCode) {
         setPayResult(res);
+        setPollingOrderId(payOrderId);
+      } else {
+        setPayModalOpen(false);
+        load();
       }
     } finally {
       setPaying(false);
@@ -137,7 +168,7 @@ export default function Orders() {
             <p style={{ color: '#999', marginTop: 8 }}>订单号：{payResult.orderNo}</p>
             <Button
               type="primary"
-              onClick={() => { setPayModalOpen(false); message.info('支付结果以订单状态为准'); load(); }}
+              onClick={() => { setPollingOrderId(null); setPayModalOpen(false); load(); }}
             >
               我已支付完成
             </Button>

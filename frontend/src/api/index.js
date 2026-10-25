@@ -25,6 +25,7 @@ export const clearCart = () => request.delete('/cart');
 export const createOrder = (data) => request.post('/orders', data);
 export const getOrders = () => request.get('/orders');
 export const getOrderDetail = (id) => request.get(`/orders/${id}`);
+export const getOrderPayStatus = (id) => request.get(`/orders/${id}/pay-status`);
 export const payOrder = (id, channel = 'mock') => request.post(`/orders/${id}/pay`, null, { params: { channel } });
 export const cancelOrder = (id) => request.post(`/orders/${id}/cancel`);
 

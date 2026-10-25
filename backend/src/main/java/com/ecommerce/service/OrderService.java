@@ -154,6 +154,13 @@ public class OrderService {
         return toVO(order, findItems(orderId));
     }
 
+    /**
+     * 查询订单状态(供支付结果轮询)
+     */
+    public Integer getStatus(Long userId, Long orderId) {
+        return getOwnOrder(userId, orderId).getStatus();
+    }
+
     @Transactional(rollbackFor = Exception.class)
     public void cancel(Long userId, Long orderId) {
         Order order = getOwnOrder(userId, orderId);
