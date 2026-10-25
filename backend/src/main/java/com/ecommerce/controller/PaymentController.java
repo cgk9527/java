@@ -2,10 +2,14 @@ package com.ecommerce.controller;
 
 import com.ecommerce.common.Result;
 import com.ecommerce.common.util.UserContext;
+import com.ecommerce.dto.PaymentFlowVO;
 import com.ecommerce.dto.PaymentResultVO;
+import com.ecommerce.dto.RefundVO;
 import com.ecommerce.service.payment.PaymentService;
+import com.ecommerce.service.payment.RefundService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -15,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -23,6 +28,7 @@ import java.util.Map;
 public class PaymentController {
 
     private final PaymentService paymentService;
+    private final RefundService refundService;
 
     @PostMapping("/orders/{id}/pay")
     public Result<PaymentResultVO> pay(@PathVariable Long id,
@@ -48,5 +54,16 @@ public class PaymentController {
     public String wechatNotify(HttpServletRequest request) throws IOException {
         String body = new String(request.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
         return paymentService.handleWechatNotify(body);
+    }
+
+    @GetMapping("/payments")
+    public Result<List<PaymentFlowVO>> payments() {
+        return Result.success(paymentService.listFlows(UserContext.getUserId()));
+    }
+
+    @PostMapping("/orders/{id}/refund")
+    public Result<RefundVO> refund(@PathVariable Long id,
+                                   @RequestParam(name = "reason", required = false) String reason) {
+        return Result.success(refundService.refund(UserContext.getUserId(), id, reason));
     }
 }

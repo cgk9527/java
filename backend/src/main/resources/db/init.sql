@@ -143,6 +143,26 @@ CREATE TABLE IF NOT EXISTS payment (
 COMMENT ON TABLE payment IS '支付流水表';
 CREATE INDEX idx_payment_order ON payment (order_id);
 
+-- ---------------------------------------------------------------------
+-- 退款表
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS refund (
+    id          BIGSERIAL PRIMARY KEY,
+    refund_no   VARCHAR(64)   NOT NULL,
+    order_id    BIGINT        NOT NULL,
+    order_no    VARCHAR(64)   NOT NULL,
+    user_id     BIGINT        NOT NULL,
+    amount      NUMERIC(12,2) NOT NULL,
+    channel     VARCHAR(20),                     -- 退款渠道: mock / alipay ...
+    reason      VARCHAR(255),
+    status      SMALLINT      NOT NULL DEFAULT 0, -- 0-处理中 1-成功 2-失败
+    created_at  TIMESTAMP     NOT NULL DEFAULT now(),
+    refunded_at TIMESTAMP
+);
+COMMENT ON TABLE refund IS '退款表';
+CREATE UNIQUE INDEX uq_refund_refund_no ON refund (refund_no);
+CREATE INDEX idx_refund_order ON refund (order_id);
+
 -- =====================================================================
 -- 种子数据(演示)
 -- =====================================================================

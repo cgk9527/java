@@ -195,6 +195,29 @@ public class OrderService {
         doCancel(order);
     }
 
+    /**
+     * 仅回补库存(不改变订单状态), 供退款使用
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void restoreStock(Long orderId) {
+        Order order = orderMapper.selectById(orderId);
+        if (order == null) {
+            throw new BizException(ResultCode.ORDER_NOT_FOUND);
+        }
+        List<OrderItem> items = findItems(orderId);
+        items.forEach(item -> stockService.restore(item.getSkuId(), item.getQuantity()));
+        List<OrderStockMessage.Item> stockItems = items.stream()
+                .map(i -> new OrderStockMessage.Item(i.getSkuId(), i.getProductId(), i.getQuantity()))
+                .toList();
+        OrderStockMessage message = OrderStockMessage.builder()
+                .operation(OrderStockMessage.OPERATION_RESTORE)
+                .orderId(orderId)
+                .userId(order.getUserId())
+                .items(stockItems)
+                .build();
+        eventPublisher.publishEvent(new OrderStockChangedEvent(this, message));
+    }
+
     private void doCancel(Order order) {
         order.setStatus(Order.STATUS_CANCELLED);
         order.setUpdatedAt(LocalDateTime.now());

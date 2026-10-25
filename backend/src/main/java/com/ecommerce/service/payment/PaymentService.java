@@ -1,10 +1,17 @@
 package com.ecommerce.service.payment;
 
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.ecommerce.common.ResultCode;
 import com.ecommerce.common.exception.BizException;
 import com.ecommerce.common.util.AlipaySignUtil;
 import com.ecommerce.common.util.WechatSignUtil;
+import com.ecommerce.dto.PaymentFlowVO;
 import com.ecommerce.dto.PaymentResultVO;
+import com.ecommerce.dto.RefundVO;
+import com.ecommerce.entity.Payment;
+import com.ecommerce.entity.Refund;
+import com.ecommerce.mapper.PaymentMapper;
+import com.ecommerce.mapper.RefundMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -24,6 +31,8 @@ public class PaymentService {
     private final AlipayProperties alipayProperties;
     private final WechatProperties wechatProperties;
     private final PaymentSupport paymentSupport;
+    private final PaymentMapper paymentMapper;
+    private final RefundMapper refundMapper;
 
     public PaymentResultVO pay(Long userId, Long orderId, String channel) {
         PaymentChannelHandler handler = handlers.stream()
@@ -62,5 +71,41 @@ public class PaymentService {
         }
         paymentSupport.markPaidByOrderNo(params.get("out_trade_no"), "wechat", params.get("transaction_id"), 3);
         return WechatSignUtil.buildXml(Map.of("return_code", "SUCCESS", "return_msg", "OK"));
+    }
+
+    /**
+     * 查询当前用户支付流水(含退款信息)
+     */
+    public List<PaymentFlowVO> listFlows(Long userId) {
+        List<Payment> payments = paymentMapper.selectList(Wrappers.<Payment>lambdaQuery()
+                .eq(Payment::getUserId, userId)
+                .orderByDesc(Payment::getCreatedAt));
+        return payments.stream().map(payment -> {
+            PaymentFlowVO vo = new PaymentFlowVO();
+            vo.setPaymentId(payment.getId());
+            vo.setOrderId(payment.getOrderId());
+            vo.setOrderNo(payment.getOrderNo());
+            vo.setAmount(payment.getAmount());
+            vo.setChannel(payment.getChannel());
+            vo.setStatus(payment.getStatus());
+            vo.setTradeNo(payment.getTradeNo());
+            vo.setPayTime(payment.getPayTime());
+            vo.setCreatedAt(payment.getCreatedAt());
+
+            Refund refund = refundMapper.selectOne(
+                    Wrappers.<Refund>lambdaQuery().eq(Refund::getOrderId, payment.getOrderId()));
+            if (refund != null) {
+                RefundVO rv = new RefundVO();
+                rv.setRefundNo(refund.getRefundNo());
+                rv.setAmount(refund.getAmount());
+                rv.setChannel(refund.getChannel());
+                rv.setReason(refund.getReason());
+                rv.setStatus(refund.getStatus());
+                rv.setCreatedAt(refund.getCreatedAt());
+                rv.setRefundedAt(refund.getRefundedAt());
+                vo.setRefund(rv);
+            }
+            return vo;
+        }).toList();
     }
 }

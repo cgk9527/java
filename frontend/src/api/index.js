@@ -30,6 +30,10 @@ export const getOrderPayStatusByNo = (orderNo) => request.get(`/orders/by-order-
 export const payOrder = (id, channel = 'mock') => request.post(`/orders/${id}/pay`, null, { params: { channel } });
 export const cancelOrder = (id) => request.post(`/orders/${id}/cancel`);
 
+// 支付流水与退款
+export const getPayments = () => request.get('/payments');
+export const refundOrder = (id, reason) => request.post(`/orders/${id}/refund`, null, { params: { reason } });
+
 // 后台管理(管理员)
 export const getAdminProducts = () => request.get('/admin/products');
 export const createAdminProduct = (data) => request.post('/admin/products', data);

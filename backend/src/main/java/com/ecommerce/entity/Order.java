@@ -23,6 +23,8 @@ public class Order {
     public static final int STATUS_CANCELLED = 2;
     /** 已关闭 */
     public static final int STATUS_CLOSED = 3;
+    /** 已退款 */
+    public static final int STATUS_REFUNDED = 4;
 
     @TableId(type = IdType.AUTO)
     private Long id;
