@@ -13,6 +13,8 @@ public interface RefundChannelHandler {
 
     /**
      * 执行渠道退款, 失败时抛出业务异常
+     *
+     * @return true=同步退款成功; false=异步处理中(等待退款结果回执)
      */
-    void refund(Order order, Payment payment, Refund refund);
+    boolean refund(Order order, Payment payment, Refund refund);
 }

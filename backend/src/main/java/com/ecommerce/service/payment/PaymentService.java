@@ -33,6 +33,7 @@ public class PaymentService {
     private final PaymentSupport paymentSupport;
     private final PaymentMapper paymentMapper;
     private final RefundMapper refundMapper;
+    private final RefundService refundService;
 
     public PaymentResultVO pay(Long userId, Long orderId, String channel) {
         PaymentChannelHandler handler = handlers.stream()
@@ -50,6 +51,12 @@ public class PaymentService {
         if (!verified) {
             log.warn("支付宝异步通知验签失败");
             return false;
+        }
+        // 退款结果回执(通知含 refund_fee 字段)
+        String refundFee = params.get("refund_fee");
+        if (refundFee != null && !refundFee.isEmpty()) {
+            refundService.handleAsyncRefundResult(params.get("out_trade_no"), true);
+            return true;
         }
         String tradeStatus = params.get("trade_status");
         if ("TRADE_SUCCESS".equals(tradeStatus) || "TRADE_FINISHED".equals(tradeStatus)) {

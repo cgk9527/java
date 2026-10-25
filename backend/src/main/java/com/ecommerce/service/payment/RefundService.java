@@ -65,13 +65,44 @@ public class RefundService {
                 .orElseThrow(() -> new BizException(ResultCode.PARAM_ERROR.getCode(), "不支持的退款渠道: " + channel));
 
         try {
-            handler.refund(order, payment, refund);
+            boolean syncSuccess = handler.refund(order, payment, refund);
+            if (syncSuccess) {
+                completeRefund(refund, order);
+            }
+            // 异步退款则保持"处理中", 等待退款结果回执
         } catch (BizException e) {
             refund.setStatus(Refund.STATUS_FAILED);
             refundMapper.updateById(refund);
             throw e;
         }
 
+        return toVO(refund);
+    }
+
+    /**
+     * 退款异步结果回执(渠道回调驱动, 幂等)
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void handleAsyncRefundResult(String orderNo, boolean success) {
+        Refund refund = refundMapper.selectOne(Wrappers.<Refund>lambdaQuery()
+                .eq(Refund::getOrderNo, orderNo)
+                .orderByDesc(Refund::getId)
+                .last("LIMIT 1"));
+        if (refund == null || Integer.valueOf(Refund.STATUS_SUCCESS).equals(refund.getStatus())) {
+            return;
+        }
+        if (success) {
+            Order order = orderMapper.selectById(refund.getOrderId());
+            if (order != null && order.getStatus() == Order.STATUS_PAID) {
+                completeRefund(refund, order);
+            }
+        } else {
+            refund.setStatus(Refund.STATUS_FAILED);
+            refundMapper.updateById(refund);
+        }
+    }
+
+    private void completeRefund(Refund refund, Order order) {
         refund.setStatus(Refund.STATUS_SUCCESS);
         refund.setRefundedAt(LocalDateTime.now());
         refundMapper.updateById(refund);
@@ -81,9 +112,7 @@ public class RefundService {
         orderMapper.updateById(order);
 
         // 回补库存(Redis + MQ 异步落库)
-        orderService.restoreStock(orderId);
-
-        return toVO(refund);
+        orderService.restoreStock(order.getId());
     }
 
     private RefundVO toVO(Refund refund) {

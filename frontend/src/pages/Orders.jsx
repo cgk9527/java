@@ -1,14 +1,15 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Card, List, Tag, Button, Empty, Space, Spin, Modal, Radio, message } from 'antd';
+import { Card, List, Tag, Button, Empty, Space, Spin, Modal, Radio, Input, message } from 'antd';
 import { useSearchParams } from 'react-router-dom';
 import { QRCodeCanvas } from 'qrcode.react';
-import { getOrders, getOrderPayStatus, getOrderPayStatusByNo, payOrder, cancelOrder } from '../api/index.js';
+import { getOrders, getOrderPayStatus, getOrderPayStatusByNo, payOrder, cancelOrder, refundOrder } from '../api/index.js';
 
 const STATUS_MAP = {
   0: { text: '待支付', color: 'orange' },
   1: { text: '已支付', color: 'green' },
   2: { text: '已取消', color: 'default' },
-  3: { text: '已关闭', color: 'default' }
+  3: { text: '已关闭', color: 'default' },
+  4: { text: '已退款', color: 'blue' }
 };
 
 const PAY_CHANNELS = [
@@ -35,6 +36,11 @@ export default function Orders() {
   const countdownRef = useRef(POLL_TIMEOUT_SECONDS);
   const [searchParams, setSearchParams] = useSearchParams();
   const returnOrderNo = searchParams.get('out_trade_no');
+
+  const [refundModalOpen, setRefundModalOpen] = useState(false);
+  const [refundOrderId, setRefundOrderId] = useState(null);
+  const [refundReason, setRefundReason] = useState('');
+  const [refunding, setRefunding] = useState(false);
 
   const load = () => {
     setLoading(true);
@@ -154,6 +160,26 @@ export default function Orders() {
     load();
   };
 
+  const openRefund = (order) => {
+    setRefundOrderId(order.id);
+    setRefundReason('');
+    setRefundModalOpen(true);
+  };
+
+  const submitRefund = async () => {
+    setRefunding(true);
+    try {
+      await refundOrder(refundOrderId, refundReason || '申请退款');
+      message.success('退款已受理');
+      setRefundModalOpen(false);
+      load();
+    } catch (e) {
+      // 拦截器已提示
+    } finally {
+      setRefunding(false);
+    }
+  };
+
   return (
     <div className="page-container">
       <Card title="我的订单">
@@ -189,6 +215,9 @@ export default function Orders() {
                             <Button onClick={() => onCancel(order.id)}>取消订单</Button>
                             <Button type="primary" onClick={() => openPay(order)}>立即支付</Button>
                           </Space>
+                        )}
+                        {order.status === 1 && (
+                          <Button type="primary" danger onClick={() => openRefund(order)}>申请退款</Button>
                         )}
                       </div>
                     </div>
@@ -236,6 +265,22 @@ export default function Orders() {
             </div>
           </>
         )}
+      </Modal>
+
+      <Modal
+        title="申请退款"
+        open={refundModalOpen}
+        onOk={submitRefund}
+        onCancel={() => setRefundModalOpen(false)}
+        confirmLoading={refunding}
+        okText="确认退款"
+      >
+        <Input.TextArea
+          rows={3}
+          placeholder="退款原因（选填）"
+          value={refundReason}
+          onChange={(e) => setRefundReason(e.target.value)}
+        />
       </Modal>
     </div>
   );

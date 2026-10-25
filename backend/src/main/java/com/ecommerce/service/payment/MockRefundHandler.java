@@ -17,7 +17,8 @@ public class MockRefundHandler implements RefundChannelHandler {
     }
 
     @Override
-    public void refund(Order order, Payment payment, Refund refund) {
-        // 模拟渠道: 无需真实调用, 交由 RefundService 标记成功
+    public boolean refund(Order order, Payment payment, Refund refund) {
+        // 模拟渠道: 无需真实调用, 同步成功
+        return true;
     }
 }

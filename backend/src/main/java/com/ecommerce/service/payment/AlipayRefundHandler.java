@@ -39,7 +39,7 @@ public class AlipayRefundHandler implements RefundChannelHandler {
     }
 
     @Override
-    public void refund(Order order, Payment payment, Refund refund) {
+    public boolean refund(Order order, Payment payment, Refund refund) {
         Map<String, String> params = new LinkedHashMap<>();
         params.put("app_id", props.getAppId());
         params.put("method", "alipay.trade.refund");
@@ -62,6 +62,8 @@ public class AlipayRefundHandler implements RefundChannelHandler {
                 String subMsg = resp.path("sub_msg").asText();
                 throw new BizException(ResultCode.SYSTEM_ERROR.getCode(), "支付宝退款失败: " + subMsg);
             }
+            // fund_change: Y=退款已到账(同步成功), N=退款处理中(等待异步回执)
+            return "Y".equals(resp.path("fund_change").asText());
         } catch (BizException e) {
             throw e;
         } catch (Exception e) {

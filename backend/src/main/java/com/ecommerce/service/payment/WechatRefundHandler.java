@@ -19,7 +19,7 @@ public class WechatRefundHandler implements RefundChannelHandler {
     }
 
     @Override
-    public void refund(Order order, Payment payment, Refund refund) {
+    public boolean refund(Order order, Payment payment, Refund refund) {
         throw new BizException(ResultCode.SYSTEM_ERROR.getCode(), "微信退款需配置商户证书, 当前暂未接入");
     }
 }
