@@ -38,10 +38,14 @@ public class OrderController {
         return Result.success(orderService.detail(UserContext.getUserId(), id));
     }
 
-    @PostMapping("/{id}/pay")
-    public Result<Void> pay(@PathVariable Long id) {
-        orderService.pay(UserContext.getUserId(), id);
-        return Result.success();
+    @GetMapping("/{id}/pay-status")
+    public Result<Integer> payStatus(@PathVariable Long id) {
+        return Result.success(orderService.getStatus(UserContext.getUserId(), id));
+    }
+
+    @GetMapping("/by-order-no/{orderNo}/pay-status")
+    public Result<Integer> payStatusByOrderNo(@PathVariable String orderNo) {
+        return Result.success(orderService.getStatusByOrderNo(UserContext.getUserId(), orderNo));
     }
 
     @PostMapping("/{id}/cancel")

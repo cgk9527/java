@@ -9,16 +9,15 @@ import com.ecommerce.dto.OrderItemVO;
 import com.ecommerce.dto.OrderVO;
 import com.ecommerce.entity.Order;
 import com.ecommerce.entity.OrderItem;
-import com.ecommerce.entity.Payment;
 import com.ecommerce.entity.Product;
 import com.ecommerce.entity.Sku;
 import com.ecommerce.event.OrderStockChangedEvent;
 import com.ecommerce.mapper.OrderItemMapper;
 import com.ecommerce.mapper.OrderMapper;
-import com.ecommerce.mapper.PaymentMapper;
 import com.ecommerce.mapper.ProductMapper;
 import com.ecommerce.mapper.SkuMapper;
 import com.ecommerce.mq.OrderStockMessage;
+import com.ecommerce.mq.OrderTimeoutProducer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -47,9 +46,9 @@ public class OrderService {
     private final OrderItemMapper orderItemMapper;
     private final SkuMapper skuMapper;
     private final ProductMapper productMapper;
-    private final PaymentMapper paymentMapper;
     private final StockService stockService;
     private final ApplicationEventPublisher eventPublisher;
+    private final OrderTimeoutProducer orderTimeoutProducer;
 
     @Transactional(rollbackFor = Exception.class)
     public OrderVO createOrder(Long userId, OrderCreateRequest request) {
@@ -136,6 +135,9 @@ public class OrderService {
                 .build();
         eventPublisher.publishEvent(new OrderStockChangedEvent(this, message));
 
+        // 投递延时消息, 超时未支付自动关闭订单
+        orderTimeoutProducer.send(order.getId());
+
         return toVO(order, orderItems);
     }
 
@@ -152,28 +154,24 @@ public class OrderService {
         return toVO(order, findItems(orderId));
     }
 
-    @Transactional(rollbackFor = Exception.class)
-    public void pay(Long userId, Long orderId) {
-        Order order = getOwnOrder(userId, orderId);
-        if (order.getStatus() != Order.STATUS_PENDING_PAY) {
-            throw new BizException(ResultCode.ORDER_STATUS_ERROR);
-        }
-        order.setStatus(Order.STATUS_PAID);
-        LocalDateTime now = LocalDateTime.now();
-        order.setPaidAt(now);
-        order.setUpdatedAt(now);
-        orderMapper.updateById(order);
+    /**
+     * 查询订单状态(供支付结果轮询)
+     */
+    public Integer getStatus(Long userId, Long orderId) {
+        return getOwnOrder(userId, orderId).getStatus();
+    }
 
-        Payment payment = new Payment();
-        payment.setOrderId(order.getId());
-        payment.setOrderNo(order.getOrderNo());
-        payment.setUserId(userId);
-        payment.setPayType(1);
-        payment.setAmount(order.getPayAmount());
-        payment.setStatus(1);
-        payment.setPayTime(now);
-        payment.setCreatedAt(now);
-        paymentMapper.insert(payment);
+    /**
+     * 按订单号查询状态(供支付宝 return_url 回调后轮询)
+     */
+    public Integer getStatusByOrderNo(Long userId, String orderNo) {
+        Order order = orderMapper.selectOne(Wrappers.<Order>lambdaQuery()
+                .eq(Order::getOrderNo, orderNo)
+                .eq(Order::getUserId, userId));
+        if (order == null) {
+            throw new BizException(ResultCode.ORDER_NOT_FOUND);
+        }
+        return order.getStatus();
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -182,11 +180,50 @@ public class OrderService {
         if (order.getStatus() != Order.STATUS_PENDING_PAY) {
             throw new BizException(ResultCode.ORDER_STATUS_ERROR);
         }
+        doCancel(order);
+    }
+
+    /**
+     * 订单超时自动关闭(由 MQ 消费者触发, 幂等)
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void autoCancel(Long orderId) {
+        Order order = orderMapper.selectById(orderId);
+        if (order == null || order.getStatus() != Order.STATUS_PENDING_PAY) {
+            return;
+        }
+        doCancel(order);
+    }
+
+    /**
+     * 仅回补库存(不改变订单状态), 供退款使用
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void restoreStock(Long orderId) {
+        Order order = orderMapper.selectById(orderId);
+        if (order == null) {
+            throw new BizException(ResultCode.ORDER_NOT_FOUND);
+        }
+        List<OrderItem> items = findItems(orderId);
+        items.forEach(item -> stockService.restore(item.getSkuId(), item.getQuantity()));
+        List<OrderStockMessage.Item> stockItems = items.stream()
+                .map(i -> new OrderStockMessage.Item(i.getSkuId(), i.getProductId(), i.getQuantity()))
+                .toList();
+        OrderStockMessage message = OrderStockMessage.builder()
+                .operation(OrderStockMessage.OPERATION_RESTORE)
+                .orderId(orderId)
+                .userId(order.getUserId())
+                .items(stockItems)
+                .build();
+        eventPublisher.publishEvent(new OrderStockChangedEvent(this, message));
+    }
+
+    private void doCancel(Order order) {
         order.setStatus(Order.STATUS_CANCELLED);
         order.setUpdatedAt(LocalDateTime.now());
         orderMapper.updateById(order);
 
-        List<OrderItem> items = findItems(orderId);
+        List<OrderItem> items = findItems(order.getId());
         items.forEach(item -> stockService.restore(item.getSkuId(), item.getQuantity()));
 
         List<OrderStockMessage.Item> stockItems = items.stream()
@@ -195,7 +232,7 @@ public class OrderService {
         OrderStockMessage message = OrderStockMessage.builder()
                 .operation(OrderStockMessage.OPERATION_RESTORE)
                 .orderId(order.getId())
-                .userId(userId)
+                .userId(order.getUserId())
                 .items(stockItems)
                 .build();
         eventPublisher.publishEvent(new OrderStockChangedEvent(this, message));

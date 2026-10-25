@@ -27,6 +27,8 @@ export default function AppHeader() {
 
   const items = [
     { key: 'orders', label: <Link to="/orders">我的订单</Link> },
+    { key: 'payments', label: <Link to="/payments">支付流水</Link> },
+    ...(user?.role === 1 ? [{ key: 'admin', label: <Link to="/admin">后台管理</Link> }] : []),
     { key: 'logout', label: <span onClick={logout}>退出登录</span> }
   ];
 

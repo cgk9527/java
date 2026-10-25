@@ -1,0 +1,32 @@
+package com.ecommerce.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+/**
+ * 支付结果(拉起支付所需的返回值)
+ */
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class PaymentResultVO {
+
+    /** 支付渠道: mock / alipay */
+    private String channel;
+
+    private Long orderId;
+
+    private String orderNo;
+
+    /** 支付宝返回的支付表单 HTML(仅电脑网站支付) */
+    private String body;
+
+    /** 二维码内容(扫码支付, 如 alipay 收款二维码/微信 code_url) */
+    private String qrCode;
+
+    /** 订单当前状态 */
+    private Integer status;
+}

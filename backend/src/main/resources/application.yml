@@ -91,6 +91,31 @@ ecommerce:
   cart-key-prefix: "cart:user:"
   product-cache-key: "product:detail:"
   es-product-index: "product"
+  order:
+    # 订单超时未支付自动关闭时长(毫秒), 30 分钟
+    timeout-ms: 1800000
+  payment:
+    # 支付宝(电脑网站支付 + 当面付扫码)
+    alipay:
+      gateway: "https://openapi.alipay.com/gateway.do"
+      app-id: ""
+      # 应用私钥(PKCS8 格式, 即 -----BEGIN PRIVATE KEY-----)
+      private-key: ""
+      # 支付宝公钥(-----BEGIN PUBLIC KEY-----)
+      alipay-public-key: ""
+      notify-url: "http://localhost:8080/api/pay/notify/alipay"
+      return-url: "http://localhost:3000/orders"
+      sign-type: "RSA2"
+      charset: "utf-8"
+    # 微信 Native 扫码支付
+    wechat:
+      app-id: ""
+      mch-id: ""
+      # 商户 API v2 密钥
+      api-key: ""
+      notify-url: "http://localhost:8080/api/pay/notify/wechat"
+      unifiedorder-url: "https://api.mch.weixin.qq.com/pay/unifiedorder"
+      spbill-create-ip: "127.0.0.1"
 
 logging:
   level:
